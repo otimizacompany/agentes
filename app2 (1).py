@@ -1,6 +1,8 @@
 import streamlit as st
 from openai import OpenAI
-import pandas as pd
+
+# Configuração inicial
+st.set_page_config(page_title="Agente IA para Professores", layout="wide")
 
 # Obtém a chave da API OpenAI dos secrets
 api_key = st.secrets["OPENAI_API_KEY"]
@@ -8,73 +10,66 @@ api_key = st.secrets["OPENAI_API_KEY"]
 # Configuração do cliente OpenAI
 client = OpenAI(api_key=api_key)
 
-# Título da aplicação
-st.title("🤖💬 Chatbot GPT Interativo com Client")
+def gerar_plano_aula(ano, componente, capitulo, modulo, duracao, metodologia, caracteristicas):
+    """Função para gerar plano de aula usando a OpenAI"""
+    prompt = f"""
+    Crie um plano de aula com as seguintes características:
+    - Ano/Série: {ano}
+    - Componente Curricular: {componente}
+    - Capítulo: {capitulo}
+    - Módulo: {modulo}
+    - Duração: {duracao} minutos
+    - Metodologia: {metodologia}
+    - Características da Turma: {caracteristicas}
+    """
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[{"role": "system", "content": "Você é um assistente especializado em planejamento educacional."},
+                 {"role": "user", "content": prompt}]
+    )
+    return response.choices[0].message.content
 
-# Inicializar o histórico de mensagens na sessão
-if "messages" not in st.session_state:
-    st.session_state["messages"] = [
-        {
-            "role": "system",
-            "content": (
-                "Você é um assistente altamente qualificado em marketing digital, especializado em criar "
-                "copywriting persuasivo e envolvente, além de roteiros criativos e estratégicos para reels no Instagram. "
-                "Seu objetivo é ajudar usuários a alcançar engajamento máximo e conversões significativas, entregando "
-                "respostas claras, criativas e alinhadas às melhores práticas do mercado. Você também pode sugerir "
-                "técnicas modernas de marketing e storytelling para ampliar a eficácia dos conteúdos produzidos."
-            )
-        }
-    ]
+# Barra lateral
+st.sidebar.title("Agente IA para Professores")
+st.sidebar.markdown("Escolha um módulo:")
+modulo = st.sidebar.selectbox("Módulos", ["Plano de Aula", "Assunto Contextualizado", "Questões (Em breve)", "Questões Adaptadas (Em breve)"])
 
-# Upload de arquivos
-uploaded_file = st.file_uploader("Envie um arquivo (TXT, CSV)", type=["txt", "csv"])
-if uploaded_file:
-    file_type = uploaded_file.type
+# Tela principal
+st.title("Agente IA para Professores")
+st.markdown("Automatize tarefas e otimize seu planejamento educacional.")
 
-    if file_type == "text/plain":
-        file_content = uploaded_file.read().decode("utf-8")
-        st.success(f"Arquivo de texto '{uploaded_file.name}' processado com sucesso!")
-        st.session_state["messages"].append(
-            {"role": "user", "content": f"Recebi o seguinte texto do arquivo '{uploaded_file.name}':\n{file_content}"}
-        )
+if modulo == "Plano de Aula":
+    st.header("Plano de Aula")
 
-    elif file_type == "text/csv":
-        df = pd.read_csv(uploaded_file)
-        st.dataframe(df)
-        st.success(f"Arquivo CSV '{uploaded_file.name}' carregado com sucesso!")
-        st.session_state["messages"].append(
-            {
-                "role": "user",
-                "content": f"Recebi um arquivo CSV chamado '{uploaded_file.name}' com as seguintes colunas: {', '.join(df.columns)}"
-            }
-        )
+    # Layout com barra lateral e tela maior
+    with st.sidebar:
+        ano = st.selectbox("Ano / Série", ["Selecione uma opção", "1º Ano", "2º Ano", "3º Ano", "6º Ano EF"])
+        componente = st.selectbox("Componente Curricular", ["Selecione uma opção", "Matemática", "Português", "Ciências", "Arte"])
+        capitulo = st.selectbox("Capítulo", ["Selecione uma opção", "Introdução", "Desenvolvimento", "Conclusão", "Capítulo 2 - Arte"])
+        modulo = st.selectbox("Módulo", ["Selecione uma opção", "Teórico", "Prático", "Módulo 4 - O que você..."])
+        duracao = st.number_input("Duração da aula (min)", min_value=10, max_value=180, value=50)
+        metodologia = st.selectbox("Metodologia", ["Selecione uma opção", "Expositiva", "Interativa", "Dinâmica", "Aula expositiva"])
+        caracteristicas = st.text_area("Características da Turma (opcional)",
+                                      placeholder="Exemplo: Turma distraída, gosta de conversar durante a aula.")
 
-# Exibir o histórico de mensagens
-for message in st.session_state["messages"]:
-    if message["role"] == "user":
-        with st.chat_message("user"):
-            st.markdown(message["content"])
-    elif message["role"] == "assistant":
-        with st.chat_message("assistant"):
-            st.markdown(message["content"])
+    # Botão para gerar plano de aula
+    gerar = st.sidebar.button("Gerar Plano de Aula")
 
-# Campo de entrada para o usuário
-if user_input := st.chat_input("Digite sua mensagem:"):
-    st.session_state["messages"].append({"role": "user", "content": user_input})
-    with st.chat_message("user"):
-        st.markdown(user_input)
+    if gerar:
+        if ano == "Selecione uma opção" or componente == "Selecione uma opção" or capitulo == "Selecione uma opção" or modulo == "Selecione uma opção" or metodologia == "Selecione uma opção":
+            st.error("Por favor, preencha todos os campos obrigatórios!")
+        else:
+            with st.spinner("Gerando plano de aula..."):
+                try:
+                    plano_aula = gerar_plano_aula(ano, componente, capitulo, modulo, duracao, metodologia, caracteristicas)
+                    st.success("Plano de aula gerado com sucesso!")
+                    st.markdown(plano_aula)
+                except Exception as e:
+                    st.error(f"Erro ao gerar plano de aula: {e}")
 
-    with st.chat_message("assistant"):
-        message_placeholder = st.empty()
-        try:
-            # Chamada à API OpenAI
-            response = client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=st.session_state["messages"]
-            )
-            # Corrigir o acesso ao conteúdo da resposta
-            full_response = response.choices[0].message.content
-            message_placeholder.markdown(full_response)
-            st.session_state["messages"].append({"role": "assistant", "content": full_response})
-        except Exception as e:
-            message_placeholder.markdown(f"**Erro:** {e}")
+elif modulo == "Assunto Contextualizado":
+    st.header("Assunto Contextualizado")
+    st.markdown("Este módulo estará disponível em breve.")
+else:
+    st.header(f"{modulo}")
+    st.markdown("Este módulo estará disponível em breve.")
