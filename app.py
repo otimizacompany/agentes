@@ -9,6 +9,9 @@ st.set_page_config(page_title="Agente IA para Professores", layout="wide")
 # Obtém a chave da API OpenAI dos secrets
 api_key = st.secrets["OPENAI_API_KEY"]
 
+# Configuração do cliente OpenAI
+client = OpenAI(api_key=api_key)
+
 def gerar_questoes(ano, componente, assunto, dificuldade, numero_questoes, tipo):
     """Função para gerar questões usando a OpenAI"""
     tipo_texto = "dissertativas" if tipo == "Dissertativas" else "objetivas"
