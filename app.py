@@ -85,7 +85,7 @@ def gerar_questoes(ano, componente, assunto, dificuldade, numero_questoes, tipo,
     )
     return response.choices[0].message.content
 
-def gerar_plano_aula(ano, componente, capitulo, modulo, duracao, metodologia, caracteristicas, contexto=None):
+def gerar_plano_aula(ano, componente, capitulo, modulo, duracao, metodologia, caracteristicas, assunto=None, contexto=None):
     """Função para gerar plano de aula usando a OpenAI"""
     contexto_texto = f"Utilize o seguinte contexto: \n{contexto}\n\n" if contexto else ""
 
@@ -96,13 +96,14 @@ def gerar_plano_aula(ano, componente, capitulo, modulo, duracao, metodologia, ca
     - Componente Curricular: {componente}
     - Capítulo do livro: {capitulo}
     - Módulo do capítulo: {modulo}
+    - Assunto: {assunto}
     - Duração: {duracao} minutos
     - Metodologia: {metodologia}
     - Características da Turma: {caracteristicas if caracteristicas else "N/A"}
     """
     response = client.chat.completions.create(
         model="gpt-3.5-turbo",
-        messages=[{"role": "system", "content": "Você é um assistente especializado em planejamento educacional."},
+        messages=[{"role": "system", "content": "Você é um assistente especializado em geração de planejamento educacional para os professores."},
                   {"role": "user", "content": prompt}]
     )
     return response.choices[0].message.content
@@ -127,7 +128,7 @@ def gerar_assunto_contextualizado(ano, componente, assunto, interesse, contexto=
     # Chamada à API
     response = client.chat.completions.create(
         model="gpt-3.5-turbo",
-        messages=[{"role": "system", "content": "Você é um assistente especializado em contextualização educacional."},
+        messages=[{"role": "system", "content": "Você é um assistente especializado em gerar contextualização educacional."},
                   {"role": "user", "content": prompt}]
     )
     return response.choices[0].message.content
@@ -172,12 +173,12 @@ def gerar_docx(conteudo, titulo):
     return buffer
 
 # Barra lateral
-st.sidebar.title("Agente IA para Professores")
+st.sidebar.title("Assistente de IA para Professores")
 st.sidebar.markdown("Escolha um módulo:")
 modulo = st.sidebar.selectbox("Módulos", ["Plano de Aula", "Assunto Contextualizado", "Questões", "Correção de Questões"])
 
 # Tela principal
-st.title("Agente IA para Professores")
+st.title("Assistente de IA para Professores")
 st.markdown("Automatize tarefas e otimize seu planejamento educacional.")
 
 # Verificar e processar o arquivo carregado
@@ -201,29 +202,42 @@ if modulo == "Plano de Aula":
         with col1:
             ano = st.selectbox("Ano / Série", ANOS_SERIES)
             componente = st.selectbox("Componente Curricular", COMPONENTES_CURRICULARES)
-            capitulo = st.selectbox("Capítulo do livro", ["Selecione uma opção", "Introdução", "Desenvolvimento", "Conclusão"])
+            assunto = st.text_input("Assunto", placeholder="Exemplo: Introdução à língua portuguesa")
 
         with col2:
-            modulo = st.selectbox("Módulo do capítulo", ["Selecione uma opção", "Teórico", "Prático"])
             duracao = st.number_input("Duração da aula (min)", min_value=10, max_value=180, value=50)
             metodologia = st.selectbox("Metodologia", ["Selecione uma opção", "Expositiva", "Interativa", "Dinâmica"])
             caracteristicas = st.text_area("Características da Turma (opcional)", placeholder="Exemplo: Turma distraída, gosta de conversar durante a aula.")
 
-        # Verificar se há um arquivo carregado como contexto
+        # Contexto do documento
         contexto = st.session_state.get("uploaded_file_content", None)
+
+        # Mensagem indicando que "Capítulo" e "Módulo" estão desativados
+        #st.markdown("⚠️ **A funcionalidade de Capítulo e Módulo estará disponível em breve.**")
 
         gerar = st.form_submit_button("Gerar Plano de Aula")
 
     if gerar:
-        if ano == "Selecione uma opção" or componente == "Selecione uma opção" or capitulo == "Selecione uma opção" or modulo == "Selecione uma opção" or metodologia == "Selecione uma opção":
+        if ano == "Selecione uma opção" or componente == "Selecione uma opção" or metodologia == "Selecione uma opção":
             st.error("Por favor, preencha todos os campos obrigatórios!")
         else:
             with st.spinner("Gerando plano de aula..."):
                 try:
-                    plano_aula = gerar_plano_aula(ano, componente, capitulo, modulo, duracao, metodologia, caracteristicas, contexto)
+                    plano_aula = gerar_plano_aula(
+                        ano=ano,
+                        componente=componente,
+                        capitulo=None,  # Capítulo desativado temporariamente
+                        modulo=None,  # Módulo desativado temporariamente
+                        duracao=duracao,
+                        metodologia=metodologia,
+                        caracteristicas=caracteristicas,
+                        assunto=assunto,
+                        contexto=contexto
+                    )
                     st.success("Plano de aula gerado com sucesso!")
                     st.markdown(plano_aula)
 
+                    # Botão para download
                     buffer = gerar_docx(plano_aula, "Plano de Aula")
                     st.download_button(
                         "Baixar Plano de Aula",
@@ -233,6 +247,7 @@ if modulo == "Plano de Aula":
                     )
                 except Exception as e:
                     st.error(f"Erro ao gerar plano de aula: {e}")
+
 
 elif modulo == "Assunto Contextualizado":
     st.header("Assunto Contextualizado")
@@ -325,36 +340,4 @@ elif modulo == "Questões":
 
 elif modulo == "Correção de Questões":
     st.header("Correção de Questões")
-
-    with st.form("correcao_form"):
-        col1, col2 = st.columns(2)
-
-        with col1:
-            tipo = st.selectbox("Tipo de Questões", ["Selecione uma opção", "Objetivas", "Dissertativas"])
-            respostas_aluno = st.text_area("Respostas do Aluno", placeholder="Insira as respostas do aluno aqui...")
-
-        with col2:
-            gabarito = st.text_area("Gabarito", placeholder="Insira o gabarito correspondente aqui...")
-            contexto = st.session_state.get("uploaded_file_content", None)
-
-        corrigir = st.form_submit_button("Corrigir Questões")
-
-    if corrigir:
-        if tipo == "Selecione uma opção" or not respostas_aluno or not gabarito:
-            st.error("Por favor, preencha todos os campos obrigatórios!")
-        else:
-            with st.spinner("Corrigindo questões..."):
-                try:
-                    correcao = corrigir_questoes(respostas_aluno, gabarito, tipo, contexto)
-                    st.success("Correção concluída com sucesso!")
-                    st.markdown(correcao)
-
-                    buffer = gerar_docx(correcao, "Correção de Questões")
-                    st.download_button(
-                        "Baixar Correção",
-                        data=buffer,
-                        file_name="correcao_questoes.docx",
-                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                    )
-                except Exception as e:
-                    st.error(f"Erro ao corrigir questões: {e}")
+    st.info("🚧 Este módulo estará disponível em breve! Fique ligado.")
