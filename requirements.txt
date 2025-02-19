@@ -2,3 +2,4 @@ openai
 streamlit
 python-docx
 PyPDF2
+python-jose
