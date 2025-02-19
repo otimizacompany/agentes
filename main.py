@@ -2,11 +2,33 @@ import streamlit as st
 from openai_functions import gerar_plano_aula, gerar_assunto_contextualizado, gerar_questoes
 from file_processing import processar_arquivos, gerar_docx
 from utils import redirecionar_com_query_params
-
-# Configuração inicial do Streamlit
 import streamlit as st
+from jose import jwt, JWTError
 
+def validate_token(token: str) -> bool:
+    try:
+        # Substitua "sua_chave_secreta" pela sua chave real
+        jwt.decode(token, "suaChaveSecreta", algorithms=["HS256"])
+        return True
+    except JWTError:
+        return False
+
+
+# Obtém os parâmetros da URL
+query_params = st.experimental_get_query_params()
+token = query_params.get("token", [None])[0]
+
+# Validação do token
+if not token or not validate_token(token):
+    st.error("Acesso negado. Você precisa estar autenticado para acessar esta página.")
+    st.stop()
+
+# Configuração do Streamlit
 st.set_page_config(page_title="Assistente de IA para Professores", layout="wide")
+
+# Resto do código do app Streamlit...
+st.title("Área Protegida - Assistente de IA para Professores")
+st.write("Bem-vindo, você está autenticado!")
 
 # Listas globais
 ANOS_SERIES = [
